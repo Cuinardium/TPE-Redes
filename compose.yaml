@@ -5,7 +5,5 @@ services:
         ports:
             - "80:80"
         volumes:
-            - type: bind
-              source: ./proxy/nginx.conf
-              target: /etc/nginx/conf.d/default.conf
-              read_only: true
+            - ./proxy/promiedos.conf:/etc/nginx/sites-enabled/promiedos.conf
+            - ./proxy/google.conf:/etc/nginx/sites-enabled/google.conf

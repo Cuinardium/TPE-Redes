@@ -1,8 +1,7 @@
 services:
     proxy:
         build:
-          context: .
-          dockerfile: DockerFile
+          context: proxy
         ports:
             - "80:80"
         volumes:

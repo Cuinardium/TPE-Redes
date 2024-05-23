@@ -1,4 +1,6 @@
 services:
+    webapp:
+        image: bkimminich/juice-shop
     proxy:
         image: owasp/modsecurity:nginx
         ports:
@@ -8,3 +10,5 @@ services:
             - ./proxy/modsecurity/modsecurity.conf:/etc/nginx/templates/modsecurity.d/modsecurity.conf.template
             - ./proxy/modsecurity/setup.conf:/etc/nginx/templates/modsecurity.d/setup.conf.template
             - ./proxy/modsecurity/custom-rules.conf:/etc/nginx/modsecurity.d/custom-rules.conf
+        depends_on:
+        - webapp

@@ -1,6 +1,6 @@
 services:
     proxy:
-        image: nginx
+        image: waf
         ports:
             - "80:80"
         volumes:

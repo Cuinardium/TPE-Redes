@@ -1,6 +1,8 @@
 services:
     proxy:
-        image: waf
+        build:
+          context: .
+          dockerfile: DockerFile
         ports:
             - "80:80"
         volumes:

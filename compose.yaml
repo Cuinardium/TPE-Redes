@@ -7,8 +7,8 @@ services:
         ports:
             - "80:80"
         volumes:
-            - ./proxy/promiedos.conf:/etc/nginx/sites-enabled/promiedos.conf
-            - ./proxy/google.conf:/etc/nginx/sites-enabled/google.conf
+            - ./proxy/hacksplaining.conf:/etc/nginx/sites-enabled/hacksplaining.conf
+            - ./proxy/juiceshop.conf:/etc/nginx/sites-enabled/juiceshop.conf
             - ./proxy/modsecurity/modsecurity.conf:/etc/nginx/modsecurity.conf
             - ./proxy/modsecurity/custom-rules.conf:/etc/nginx/modsecurity/custom-rules.conf
         depends_on:

@@ -1,4 +1,6 @@
 services:
+    webapp:
+        image: bkimminich/juice-shop
     proxy:
         build:
           context: proxy
@@ -7,3 +9,7 @@ services:
         volumes:
             - ./proxy/promiedos.conf:/etc/nginx/sites-enabled/promiedos.conf
             - ./proxy/google.conf:/etc/nginx/sites-enabled/google.conf
+            - ./proxy/modsecurity/modsecurity.conf:/etc/nginx/modsecurity.conf
+            - ./proxy/modsecurity/custom-rules.conf:/etc/nginx/modsecurity/custom-rules.conf
+        depends_on:
+        - webapp

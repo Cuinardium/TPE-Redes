@@ -13,4 +13,11 @@ services:
             - ./proxy/modsecurity/custom-rules.conf:/etc/nginx/modsecurity/custom-rules.conf
             - ./proxy/error-pages/403.html:/usr/share/nginx/html/403.html
         depends_on:
-        - webapp
+            - webapp
+            - elk
+    elk:
+        image: sebp/elk
+        ports:
+            - "5601:5601"
+            - "9200:9200"
+            - "5044:5044"

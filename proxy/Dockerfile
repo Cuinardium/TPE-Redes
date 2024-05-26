@@ -49,7 +49,16 @@ RUN cp /opt/ModSecurity/unicode.mapping /etc/nginx/unicode.mapping
 # printf '%s\n%s\n' "to be prepended" "$(cat text.txt)" >text.txt
 RUN printf '%s\n%s\n' "load_module /etc/nginx/modules-enabled/ngx_http_modsecurity_module.so;" "$(cat /etc/nginx/nginx.conf)" > /etc/nginx/nginx.conf
 
+# Descargamos filebeat
+RUN wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | apt-key add -
+RUN apt-get install apt-transport-https -y
+RUN echo "deb https://artifacts.elastic.co/packages/8.x/apt stable main" | tee -a /etc/apt/sources.list.d/elastic-8.x.list
+RUN apt-get update && apt-get install filebeat -y
+
+# Copiamos el archivo de configuración de filebeat
+COPY filebeat/filebeat.yml /etc/filebeat/filebeat.yml
+
 EXPOSE 80
 
-CMD ["nginx", "-g", "daemon off;"]
-
+# Corremos nginx y filebeat
+CMD service filebeat start && nginx -g 'daemon off;'

@@ -1,0 +1,12 @@
+
+output.elasticsearch:
+  hosts: ["elk:9200"]
+
+# modsecurity logs
+filebeat.inputs:
+    - type: log
+      paths:
+        - /var/log/modsec_audit.log
+      json.keys_under_root: true
+      json.add_error_key: true
+      json.message_key: log

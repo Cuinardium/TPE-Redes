@@ -11,5 +11,6 @@ services:
             - ./proxy/sites/juiceshop.conf:/etc/nginx/sites-enabled/juiceshop.conf
             - ./proxy/modsecurity/modsecurity.conf:/etc/nginx/modsecurity.conf
             - ./proxy/modsecurity/custom-rules.conf:/etc/nginx/modsecurity/custom-rules.conf
+            - ./proxy/error-pages/403.html:/usr/share/nginx/html/403.html
         depends_on:
         - webapp

@@ -25,13 +25,18 @@ RUN ./configure
 RUN make
 RUN make install
 
+# Descargamos OWASP-crs para modsecurity
+WORKDIR /opt
+RUN apt-get install -y wget
+RUN wget https://github.com/coreruleset/coreruleset/archive/v3.3.5.tar.gz
+RUN tar -xvzf v3.3.5.tar.gz
+
 # Descargamos el conector de nginx para ModSecurity
 WORKDIR /opt
 RUN git clone https://github.com/owasp-modsecurity/ModSecurity-nginx.git
 
 # Descargamos nginx con soporte para modsecurity
 WORKDIR /opt
-RUN apt-get install -y wget
 RUN wget https://nginx.org/download/nginx-1.24.0.tar.gz
 RUN tar -xvzf nginx-1.24.0.tar.gz
 WORKDIR /opt/nginx-1.24.0

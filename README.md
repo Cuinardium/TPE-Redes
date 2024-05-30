@@ -34,6 +34,97 @@ Este es un diagrama de la arquitectura de la solución del proyecto, donde el se
 
 ## Instrucciones
 
+### Configurar el servidor proxy
+A continuación se detallan los pasos para configurar el servidor proxy para que funcione como un proxy reverso para recibir las peticiones para al menos 2 servidores con web server.
+
+#### Construccion
+
+Como mencionamos anteriormente, el servidor proxy se ejecuta en un contenedor de Docker. Para crear este contenedor, utilizamos el Dockerfile ubicado en ./proxy/Dockerfile. La construcción de un contenedor con Nginx se realiza de la siguiente manera:
+
+```Dockerfile
+# A partir de un linux
+FROM ubuntu:latest
+
+# Instalamos nginx
+RUN apt-get update &&           \
+    apt-get install -y nginx=1.24.0-2ubuntu7
+
+#.....otras directivas
+
+# Escuchamos en el puerto 80
+EXPOSE 80
+
+# Corremos nginx en primer plano
+CMD ["nginx", "-g", "daemon off;"]
+```
+
+#### Configuracion
+
+Dentro de la carpeta `./proxy/sites/`, tenemos dos archivos de configuración para los sitios web Juiceshop y XSS-Game en Nginx.
+
+Para la aplicación Juiceshop, el archivo de configuración `juiceshop.conf` se configura de la siguiente manera:
+
+```Nginx
+server {
+    # Puerto y nombre de host
+    listen       80;
+    server_name juiceshop.local;
+    
+    #.....otras directivas
+    
+    location / {
+        # Aquí especificamos a dónde se enviarán las solicitudes entrantes.
+        proxy_pass http://webapp:3000;
+        
+        # Configuramos algunos encabezados para enviar al servidor web.
+        proxy_set_header Host webapp;
+        
+        # Indicamos al servidor backend que la URL de referencia es 'http://webapp:3000'.
+        proxy_set_header Referer http://webapp:3000;
+
+        # Configuración de encabezados HTTP con informacion util para el servidor web.
+        proxy_set_header User-Agent $http_user_agent;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header Accept-Encoding "";
+        proxy_set_header Accept-Language $http_accept_language;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    #.....otras directivas
+}
+```
+
+Notar que la URL especificada en proxy_pass es `http://webapp:3000`. Como mencionamos anteriormente, el servidor Juiceshop se ejecuta en un contenedor dentro de la misma red de Docker Compose que el proxy. Por lo tanto, Docker Compose nos permite resolver el nombre webapp a la dirección IP del contenedor correspondiente.
+
+Para la aplicación XSS-Game, el archivo de configuración `xss-game.conf` tiene una configuración similar pero apunta a otro sitio:
+
+```Nginx
+server {
+    listen 80;
+    server_name xss-game.local;
+
+    #.....otras directivas
+
+    location / {
+        proxy_pass https://xss-game.appspot.com;
+
+        proxy_set_header Host xss-game.appspot.com;
+        proxy_set_header Referer https://xss-game.appspot.com;
+
+        proxy_set_header User-Agent $http_user_agent;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header Accept-Encoding "";
+        proxy_set_header Accept-Language $http_accept_language;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+
+    #.....otras directivas
+}
+```
+
+Estos archivos de configuración determinan cómo Nginx manejará las solicitudes entrantes para cada sitio web, redirigiéndolas al servidor correspondiente y configurando los encabezados necesarios para la comunicación con el servidor web.
+
+---
 para armar los contenedores se debe ejecutar el siguiente comando
 ```sh
 docker compose build

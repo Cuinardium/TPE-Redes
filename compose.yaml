@@ -7,7 +7,7 @@ services:
         ports:
             - "80:80"
         volumes:
-            - ./proxy/sites/hacksplaining.conf:/etc/nginx/sites-enabled/hacksplaining.conf
+            - ./proxy/sites/xss-game.conf:/etc/nginx/sites-enabled/xss-game.conf
             - ./proxy/sites/juiceshop.conf:/etc/nginx/sites-enabled/juiceshop.conf
             - ./proxy/modsecurity/modsecurity.conf:/etc/nginx/modsecurity.conf
             - ./proxy/modsecurity/crs-setup.conf:/etc/nginx/crs-setup.conf

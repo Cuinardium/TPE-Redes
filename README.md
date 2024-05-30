@@ -32,14 +32,13 @@ Este es un diagrama de la arquitectura de la solución del proyecto, donde el se
 
 ![arquitectura](./docs/architecture.png)
 
-## Instrucciones
+# Instrucciones
 
-### Configurar el servidor proxy
+## Configurar el servidor proxy
 A continuación se detallan los pasos para configurar el servidor proxy para que funcione como un proxy reverso para recibir las peticiones para al menos 2 servidores con web server.
+### Construccion
 
-#### Construccion
-
-Como mencionamos anteriormente, el servidor proxy se ejecuta en un contenedor de Docker. Para crear este contenedor, utilizamos el Dockerfile ubicado en ./proxy/Dockerfile. La construcción de un contenedor con Nginx se realiza de la siguiente manera:
+Como mencionamos anteriormente, el servidor proxy se ejecuta en un contenedor de Docker. Para crear este contenedor, utilizamos el Dockerfile ubicado en `./proxy/Dockerfile`. La construcción de un contenedor con Nginx se realiza de la siguiente manera:
 
 ```Dockerfile
 # A partir de un linux
@@ -58,7 +57,7 @@ EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
 ```
 
-#### Configuracion
+### Configuracion
 
 Dentro de la carpeta `./proxy/sites/`, tenemos dos archivos de configuración para los sitios web Juiceshop y XSS-Game en Nginx.
 
@@ -123,6 +122,81 @@ server {
 ```
 
 Estos archivos de configuración determinan cómo Nginx manejará las solicitudes entrantes para cada sitio web, redirigiéndolas al servidor correspondiente y configurando los encabezados necesarios para la comunicación con el servidor web.
+
+## Agregar ModSecurity
+A continuación se detallan los pasos para agregar ModSecurity al servidor proxy para que este pueda cumplir la funcion de un WAF.
+
+### Construccion
+ModSecurity funciona como un modulo para nginx por lo tanto se debe agregar al Dockerfile del proxy directivas que instalaran ModSecurity y lo configuraran como modulo de nginx. El Dockerfile en `./proxy/Dockerfile` quedara asi:
+
+```Dockerfile
+#.....otras directivas
+
+# Instalamos las dependencias necesarias para el módulo de modsecurity
+RUN apt-get install -y gcc make build-essential autoconf automake libtool libcurl4-openssl-dev \
+    liblua5.3-dev libfuzzy-dev ssdeep gettext pkg-config libgeoip-dev libyajl-dev doxygen \
+    libpcre3-dev libpcre2-16-0 libpcre2-dev libpcre2-posix3 zlib1g zlib1g-dev git
+
+# Descargamos modsecurity del repositorio oficial en /opt
+WORKDIR /opt
+RUN git clone https://github.com/owasp-modsecurity/ModSecurity.git
+
+# Instalamos modsecurity, aqui se compilara desde 0 modsecurity
+WORKDIR /opt/ModSecurity
+RUN git submodule init
+RUN git submodule update
+RUN ./build.sh
+RUN ./configure
+RUN make
+RUN make install
+
+# Descargamos el conector que conecta nginx con ModSecurity
+WORKDIR /opt
+RUN git clone https://github.com/owasp-modsecurity/ModSecurity-nginx.git
+
+# Compilamos el modulo utilizando el conector
+WORKDIR /opt
+RUN wget https://nginx.org/download/nginx-1.24.0.tar.gz
+RUN tar -xvzf nginx-1.24.0.tar.gz
+WORKDIR /opt/nginx-1.24.0
+RUN ./configure --with-compat --add-dynamic-module=/opt/ModSecurity-nginx
+RUN make modules
+
+# Copiamos el módulo a la carpeta de módulos de nginx para que este pueda accederlo
+RUN cp objs/ngx_http_modsecurity_module.so /etc/nginx/modules-enabled/
+
+# Copiamos la configuracion default
+RUN cp /opt/ModSecurity/modsecurity.conf-recommended /etc/nginx/modsecurity.conf
+RUN cp /opt/ModSecurity/unicode.mapping /etc/nginx/unicode.mapping
+
+# Configuramos nginx para que cargue el módulo de modsecurity
+# Esto lo hacemos con un prepend
+RUN printf '%s\n%s\n' "load_module /etc/nginx/modules-enabled/ngx_http_modsecurity_module.so;" "$(cat /etc/nginx/nginx.conf)" > /etc/nginx/nginx.conf
+
+#.....otras directivas
+
+```
+
+### Configuracion
+
+Dentro del directorio `./proxy/modsecurity`, se encuentra el archivo de configuración predeterminado de ModSecurity en `modsecurity.conf`. Este archivo contiene la configuración principal de ModSecurity, que incluye reglas de seguridad, configuraciones de auditoría y otras directivas importantes para proteger las aplicaciones web contra ataques comunes.
+
+De forma predeterminada Modsecurity no bloquea el trafico malicioso, solamente lo detecta y lo loguea. Para que modsecurity bloquee el trafico cambiamos la directiva `SecRuleEngine`. El archivo donde se mandan los logs se especifica con la directiva `SecAuditLog`.
+
+```
+#.....otras directivas
+
+# La directiva predeterminada era: SecRuleEngine DetectionOnly
+SecRuleEngine On 
+
+# Con esta directiva especificamos donde se guardan los logs
+SecAuditLog /var/log/modsec_audit.log
+
+#.....otras directivas
+```
+
+Listo! Ya tenemos lo necesario para levantar el WAF, ahora podemos configurar algunas reglas
+
 
 ---
 para armar los contenedores se debe ejecutar el siguiente comando

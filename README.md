@@ -28,9 +28,13 @@ Los utilizamos para definir y ejecutar el entorno completo del WAF, incluyendo N
 
 ## Arquitectura
 
-Este es un diagrama de la arquitectura de la solución del proyecto, donde el servidor proxy reverso funciona como un WAF para proteger dos aplicaciones web: una dentro de la red del WAF y otra alojada en Internet. Si se configura correctamente, un usuario malicioso no podrá atacar las aplicaciones web, mientras que un usuario normal debería poder utilizar las aplicaciones sin problemas.
+Este es un diagrama de la arquitectura de la solución del proyecto, donde el servidor proxy reverso funciona como un WAF para proteger dos aplicaciones web: una dentro de la misma red que el WAF y otra alojada en Internet. Si se configura correctamente, un usuario malicioso no podrá atacar las aplicaciones web, mientras que un usuario normal debería poder utilizar las aplicaciones sin problemas.
 
 ![arquitectura](./docs/architecture.png)
+
+La aplicación web que se ejecuta dentro de la red del WAF es un contenedor que utiliza la imagen de la aplicación [Juice Shop de OWASP](https://github.com/juice-shop/juice-shop). Esta es una aplicación web de prueba que contiene múltiples vulnerabilidades para propósitos educativos y de entrenamiento en seguridad. La otra aplicación que se ejecuta en Internet es [XSS Game](https://xss-game.appspot.com/), una página web creada por Google para probar y aprender sobre ataques de Cross-Site Scripting.
+
+---
 
 # Instrucciones
 
@@ -339,6 +343,71 @@ Para configurar una página de respuesta predeterminada que se muestre cuando se
 ```
 
 El archivo que contiene el código HTML de la página de respuesta se encuentra en `./proxy/error_pages/403.html`. Este código no es de nuestra autoría y fue obtenido de [CodePen](https://codepen.io/anjanas_dh/pen/ZMqKwb).
+
+## Agregar el CRS de OWASP
+
+Configurar reglas puede ser difícil, y aún más difícil es determinar qué reglas son necesarias para proteger las aplicaciones contra una variedad de ataques. Para ayudar con esto, OWASP proporciona un conjunto de reglas conocido como [CRS (Core Rule Set)](https://owasp.org/www-project-modsecurity-core-rule-set/).
+
+### Construcción
+
+Para instalar el CRS, primero agregamos las siguientes directivas al Dockerfile en `./proxy/Dockerfile`.
+
+```Dockerfile
+#.....otras directivas
+
+# Descargamos OWASP-crs para modsecurity
+WORKDIR /opt
+RUN apt-get install -y wget
+RUN wget https://github.com/coreruleset/coreruleset/archive/v3.3.5.tar.gz
+RUN tar -xvzf v3.3.5.tar.gz
+
+#.....otras directivas
+```
+
+Luego, simplemente indicamos a ModSecurity que incluya las reglas del CRS. Por lo tanto agregamos las siguientes directivas al archivo de configuracion de Modsecurity (`./proxy/modsecurity/modsecurity.conf`)
+
+```
+#.....otras directivas
+
+# Incluimos configuracion del OWASP CRS 
+Include ./crs-setup.conf
+
+# Incluimos todas las reglas
+Include /opt/coreruleset-3.3.5/rules/*.conf
+
+#.....otras directivas
+```
+
+Con esto, todas las reglas del CRS están instaladas, proporcionando un nivel adicional de seguridad a nuestras aplicaciones.
+
+### Configuración
+
+Dentro del directorio `./proxy/modsecurity`, se encuentra el archivo de configuración predeterminado del CRS en `crs-setup.conf`. En este archivo, se puede configurar el CRS con diversas opciones, una de las configuraciones posibles es el `paranoia level`. 
+
+Este controla el grado de sensibilidad de las reglas de detección del CRS. Cuanto mayor sea el nivel de paranoia, más estrictas serán las reglas y más probable será que se detecten ataques. Sin embargo, un nivel de paranoia más alto también aumentará la posibilidad de falsos positivos, es decir, la detección incorrecta de actividades legítimas como ataques. Para mayor información consultar [aqui](https://coreruleset.org/docs/concepts/paranoia_levels/). Nosotros utilizamos el nivel de paranoia 1 y lo especificamos con la siguiente directiva
+
+```
+SecAction \
+ "id:900000,\
+  phase:1,\
+  nolog,\
+  pass,\
+  t:none,\
+  setvar:tx.paranoia_level=1"
+```
+
+De todas formas, incluso con el nivel 1, hemos encontrado algunos falsos positivos con algunas reglas en la aplicación `juiceshop`. Para abordar este problema, podemos excluir reglas conflictivas mediante la adición de las siguientes directivas al archivo `./proxy/modsecurity/modsecurity.conf`.
+
+```
+#.....otras directivas
+
+# Especificamos por ID las reglas a excluir
+SecRuleRemoveById 920170 920420
+```
+
+Esto nos permite excluir reglas específicas del CRS identificadas por su ID, lo que ayuda a reducir los falsos positivos sin comprometer significativamente la seguridad de la aplicación.
+
+
 
 ---
 para armar los contenedores se debe ejecutar el siguiente comando

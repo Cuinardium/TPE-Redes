@@ -303,6 +303,43 @@ SecRule RESPONSE_BODY "@contains SQLITE_ERROR: unrecognized token" "id:10,phase:
 
 Esto es útil para identificar posibles vulnerabilidades en la aplicación relacionadas con inyecciones SQL que podrían causar errores en la base de datos.
 
+## Configurar un página default de respuesta ante detección de anomalía
+
+Para configurar una página de respuesta predeterminada que se muestre cuando se detecten ataques, debemos agregar las siguientes directivas a los archivos de configuración de Nginx correspondientes a cada aplicación.
+
+`juiceshop.conf`
+```Nginx
+    #.....otras directivas
+
+    # Define la página de error para el código de estado 403
+    error_page 403 /403.html;
+    
+    # Configura la ubicación para la página de error 403
+    location = /403.html {
+        # Si el cliente acepta respuestas en formato JSON, devuelve un mensaje personalizado
+        if ($http_accept ~ json) {
+            return 403 "You shall not pass";
+        }
+        
+        # De lo contrario, sirve la página de error desde el directorio especificado
+        root /usr/share/nginx/html;
+    }
+    
+    #.....otras directivas
+```
+
+`xss-game.conf`
+```Nginx
+    error_page 403 /403.html;
+
+    location = /403.html {
+        # Como esta aplicacion no usa json, simplemente sirvo la pagina de error
+        root /usr/share/nginx/html;
+    }
+```
+
+El archivo que contiene el código HTML de la página de respuesta se encuentra en `./proxy/error_pages/403.html`. Este código no es de nuestra autoría y fue obtenido de [CodePen](https://codepen.io/anjanas_dh/pen/ZMqKwb).
+
 ---
 para armar los contenedores se debe ejecutar el siguiente comando
 ```sh

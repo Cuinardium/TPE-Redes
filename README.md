@@ -177,6 +177,30 @@ RUN printf '%s\n%s\n' "load_module /etc/nginx/modules-enabled/ngx_http_modsecuri
 
 ```
 
+Una vez instalado ModSecurity, lo que queda es activarlo para cada uno de los sitios en la configuracion de nginx. Por lo que debemos agregar las siguientes directivas:
+
+`juiceshop.conf`
+```Nginx
+    #.....otras directivas
+    
+    # Activo ModSecurity
+    modsecurity on;
+    
+    # Especifico el archivo de configuracion
+    modsecurity_rules_file /etc/nginx/modsecurity.conf;
+    
+    #.....otras directivas
+```
+
+`xss-game.conf`
+```Nginx
+    #.....otras directivas
+    
+    modsecurity on;
+    modsecurity_rules_file /etc/nginx/modsecurity.conf;
+    
+    #.....otras directivas
+```
 ### Configuracion
 
 Dentro del directorio `./proxy/modsecurity`, se encuentra el archivo de configuración predeterminado de ModSecurity en `modsecurity.conf`. Este archivo contiene la configuración principal de ModSecurity, que incluye reglas de seguridad, configuraciones de auditoría y otras directivas importantes para proteger las aplicaciones web contra ataques comunes.
@@ -197,6 +221,87 @@ SecAuditLog /var/log/modsec_audit.log
 
 Listo! Ya tenemos lo necesario para levantar el WAF, ahora podemos configurar algunas reglas
 
+## Definición de Reglas
+En esta sección se detallan algunas reglas configuradas en ModSecurity para proteger las aplicaciones web. Incluye tanto reglas de detección como de bloqueo. Estas reglas se encuentran en el archivo `./proxy/modsecurity/custom-rules.conf`. Para obtener más información sobre el lenguaje de reglas de ModSecurity, recomendamos la [documentación oficial de ModSecurity](https://github.com/owasp-modsecurity/ModSecurity/wiki/).
+
+### Reglas de bloqueo
+Estas reglas bloquean el trafico si existe un match, esto se hace usando la directiva de acción `deny`.
+
+#### Bloqueo por IP
+Estas reglas bloquean el acceso desde direcciones IP específicas o rangos de IP.
+
+```
+# Bloqueo la red 192.168.0.0/16
+SecRule REMOTE_ADDR "@ipMatch 192.168.0.0/16" "id:10,phase:1,deny"
+
+# Bloqueo la ip 10.0.0.1
+SecRule REMOTE_ADDR "@ipMatch 10.0.0.1" "id:10,phase:1,deny"
+```
+
+#### Bloqueo fuerza bruta en el login
+
+Estas reglas están diseñadas para detectar y bloquear intentos de fuerza bruta en el path de inicio de sesión.
+```
+# Inicializa una colección de IP para almacenar el número de intentos de inicio de sesión
+SecAction "initcol:ip=%{REMOTE_ADDR},pass,phase:1, id:1"
+
+# Incrementa el contador de intentos de inicio de sesión fallidos cada vez que se accede a /rest/user/login
+SecRule REQUEST_URI "^/rest/user/login" "pass,phase:1,setvar:ip.attempts=+1,id:2"
+
+# Reinicia el contador de intentos de inicio de sesión si el estado de la respuesta es exitoso (2xx)
+SecRule REQUEST_URI "^/rest/user/login" "chain,pass,phase:3,id:3"
+    SecRule RESPONSE_STATUS "^2..$" "setvar:ip.attempts=0,id:4"
+
+# Bloquea el acceso si hay más de 5 intentos de inicio de sesión fallidos
+SecRule IP:ATTEMPTS "@gt 5" "phase:1,deny,status:403,id:5"
+```
+
+#### Bloqueo de SQL Injection
+
+Esta regla está diseñada para bloquear intentos de SQL injection al buscar patrones en los argumentos de las solicitudes (ARGS). En la expresión regular `(@rx)` incluimos varias keywords de sql y ataques como `' or 1=1 --`.
+```
+# Bloquea intentos de SQL injection detectando patrones comunes en los argumentos de las solicitudes
+SecRule ARGS "@rx (?i:(union select|select.*from|insert into|delete from|drop table|information_schema|or 1=1|benchmark|sleep|load_file|into outfile))" \
+    "id:6,\
+    phase:2,\
+    deny,\
+    status:403"
+```
+
+#### Bloqueo de XSS
+Esta regla está diseñada para bloquear intentos de Cross-Site Scripting (XSS) al buscar patrones de scripts en varias partes de la solicitud. La expresión regular `(@rx)` detecta etiquetas `<script>` y su contenido.
+```
+# Bloquea intentos de Cross-Site Scripting (XSS) detectando scripts maliciosos en varias partes de la solicitud
+SecRule REQUEST_URI|ARGS|ARGS_NAMES|REQUEST_HEADERS|!REQUEST_HEADERS:Referer|REQUEST_COOKIES|REQUEST_BODY "@rx <script[\s\S]*?>.*<\/script>" \
+    "id:'7',phase:2,t:none,t:htmlEntityDecode,t:lowercase,deny,status:403"
+```
+
+### Reglas de solo detección
+En esta sección, definimos reglas que están configuradas únicamente para la detección de ciertos patrones. Estas reglas no bloquearán el tráfico, sino que registrarán los eventos relevantes para su análisis y monitoreo. Estos mensajes se encuentran en el archivo `/var/log/modsec_audit.log` del container del proxy.
+#### Detección de user agent
+Esta regla detecta solicitudes que utilizan el User-Agent [HTTPie](https://httpie.io/) y registra un mensaje en el log.
+```
+# Detecto el user agent httpie
+SecRule REQUEST_HEADERS:User-Agent "HTTPie" "id:8,log,msg:'Request from HTTPie user agent'"
+```
+
+#### Detección de login del administrador
+Esta regla detecta intentos de inicio de sesión con credenciales de administrador en la URI `/rest/user/login`.
+```
+SecRule REQUEST_URI "@contains /rest/user/login" "id:9,phase:2,chain,log,msg:'Attempted login to admin'"
+    SecRule REQUEST_BODY "@contains admin@admin.com" "chain,phase:2"
+    SecRule REQUEST_BODY "@contains adminpassword" "phase:2"
+```
+
+La regla verifica el URI y el cuerpo de la solicitud para detectar las credenciales `admin@admin.com` y `adminpassword` (supongamos que son las credenciales reales del admin). Si se cumplen todas estas condiciones, se registra un mensaje indicando un intento de inicio de sesión con credenciales de administrador.
+#### Detección de un error de SQL en la respuesta
+Esta regla detecta mensajes de error específicos de SQL en el cuerpo de la respuesta.
+
+```
+SecRule RESPONSE_BODY "@contains SQLITE_ERROR: unrecognized token" "id:10,phase:4,log,msg:'SQL error message detected in response'"
+```
+
+Esto es útil para identificar posibles vulnerabilidades en la aplicación relacionadas con inyecciones SQL que podrían causar errores en la base de datos.
 
 ---
 para armar los contenedores se debe ejecutar el siguiente comando

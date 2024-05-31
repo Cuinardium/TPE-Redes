@@ -521,7 +521,7 @@ El WAF detectó el ataque y bloqueó la solicitud, mostrando la página de respu
 
 ## Ataque de fuerza bruta
 
-Mediante este ataque se intentara iniciar sesion como el administrador en el sitio `juiceshop` utilizando fuerza bruta. Para esto utilizaremos la lista de contrasenas [best1050.txt](https://github.com/danielmiessler/SecLists/blob/master/Passwords/Common-Credentials/best1050.txt) que contiene la clave del administrador. El ataque se correra con el siguiente script de python:
+Mediante este ataque se intentara iniciar sesion como el administrador en el sitio `juiceshop` utilizando fuerza bruta. Para esto utilizaremos la lista de contrasenas [best1050.txt](https://github.com/danielmiessler/SecLists/blob/master/Passwords/Common-Credentials/best1050.txt) que contiene la clave del administrador. El ataque se correra con el siguiente script de python inspirado en [este script](https://github.com/itaynir1/Brute-Force/blob/main/bruteforce.py):
 
 ```python
 import requests

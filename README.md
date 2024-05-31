@@ -480,3 +480,116 @@ El servicio de proxy escucha en el puerto `80` y lo vincula al mismo puerto en e
 
 
 ---
+
+# El WAF en acción
+
+A continuacion mostramos la respuesta del WAF ante algunos ataques
+
+## Ataque de SQLi en login
+
+El sitio de `juiceshop` es vulnerable a la inyección de SQL, lo que nos permite acceder a la cuenta del administrador si ingresamos `'or 1=1 --` en el campo de email al iniciar sesión.
+
+![ataque de SQLi](./docs/SQli_attack.png)
+
+### Sin el WAF
+![exito de ataque de SQLi](./docs/SQLi_success.png)
+
+Se puede ver como, mediante SQLi logramos acceder a la cuenta del administrador.
+### Con el WAF
+![fracaso de ataque de SQLi](./docs/SQLi_failed.png)
+Se puede observar que el WAF bloqueó la solicitud, mostrando el mensaje de error que especificamos para JSON.
+
+## Ataque de XSS
+
+El sitio de `xss-game` es vulnerable a XSS, lo que nos permite ejecutar scripts maliciosos en el navegador. En este ataque mostramos una alerta mediante:
+```html
+<script>alert('ataque')</script>
+```
+
+![ataque de XSS](./docs/XSS_attack.png)
+
+### Sin el WAF
+
+![exito de ataque de XSS](./docs/XSS_success.png)
+
+Observamos como se ejecuto el script mostrando la alerta en el navegador.
+
+### Con el WAF
+![fracaso de ataque XSS](./docs/XSS_failed.png)
+
+El WAF detectó el ataque y bloqueó la solicitud, mostrando la página de respuesta configurada previamente.
+
+## Ataque de fuerza bruta
+
+Mediante este ataque se intentara iniciar sesion como el administrador en el sitio `juiceshop` utilizando fuerza bruta. Para esto utilizaremos la lista de contrasenas [best1050.txt](https://github.com/danielmiessler/SecLists/blob/master/Passwords/Common-Credentials/best1050.txt) que contiene la clave del administrador. El ataque se correra con el siguiente script de python:
+
+```python
+import requests
+from termcolor import colored
+
+url = input('Enter the URL: ')
+email = 'admin@juice-sh.op'
+password_file = 'best1050.txt'
+
+def bruteforce(url):
+    for password in passwords:
+        password = password.strip()
+        print(colored(('Trying: ' + password), 'white'))
+        data = {'email':email,'password':password,'Login':'submit'}
+        
+        response = requests.post(url, data=data)
+
+        if response.status_code == 401:
+            print(colored(('[-] Incorrect Password: ' + password), 'yellow'))
+
+        if response.status_code == 403:
+            print(colored(('blocked by WAF'), 'red'))
+            exit()
+
+        if response.status_code == 200:
+            print(colored(('[+] Found Username: ==> ' + email), 'green'))
+            print(colored(('[+] Found Password: ==> ' + password), 'green'))
+            exit()
+            
+with open(password_file, 'r') as passwords:
+    bruteforce(url)
+
+print('[!!] Password Not In List')
+```
+
+### Sin el WAF
+![exito de ataque de fuerza bruta](./docs/brute_force_success.png)
+
+El ataque tuvo éxito y obtuvimos la contraseña del administrador.
+
+### Con el WAF
+
+![fracaso de ataque de fuerza bruta](./docs/brute_force_failed.png)
+
+Después de un par de intentos, el WAF bloqueó el ataque.
+
+## Detección de User Agent
+
+Anteriormente configuramos una regla que detectaba el User Agent [HTTPie](https://httpie.io/). Veamos cómo se refleja esta detección en los logs.
+
+Primero, accedamos al archivo de logs del contenedor. Con el siguiente comando, podremos ver los registros en tiempo real:
+
+```sh
+docker compose exec proxy tail -f /var/log/modsec_audit.log
+```
+
+Luego, hagamos una request usando el CLI de HTTPie:
+
+```sh
+http POST juiceshop.local/rest/user/login \
+    email="example@example.com" \
+    password="examplePassword" 
+```
+
+Y aqui vemos el log correspondiente a la detección:
+
+![detecccion de user agent](./docs/user_agent_detection.png)
+
+Se puede observar diversa información de la solicitud y que en la sección `H` se indica que se ha matcheado el User Agent en la regex, junto con un mensaje (línea azul).
+
+

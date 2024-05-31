@@ -1,19 +1,50 @@
 # TPE-Redes
 Este repositorio contiene la configuración y los archivos necesarios para implementar un Web Application Firewall (WAF) utilizando ModSecurity, en conjunto con un servidor proxy reverso. El objetivo de este proyecto es proporcionar una capa de seguridad adicional para aplicaciones web, protegiéndolas contra diversos tipos de ataques.
 
-Los pasos que seguiremos para implementar el sistema son los siguientes:
-
-1. Configurar un servidor Proxy que funcione como proxy reverso para recibir las peticiones para al menos 2 servidores con web server
-2. Configurar un servidor con ModSecurity que reciba las redirecciones del Proxy y chequee la seguridad de las mismas
-3. Configurar al menos 3 reglas de solo detección para realizar análisis
-4. Configurar al menos 3 reglas de bloqueo
-5. Probar al menos 3 ataques para mostrar la respuesta del waf, configurar un página default de respuesta ante detección de anomalía.
-
 ## Requerimientos
 
 Para poder levantar el proyecto es necesario contar con lo siguiente
 - `docker`
 -  `docker compose`
+
+## Ejecución
+
+Clonar el repositorio.
+
+```sh
+git clone https://github.com/Cuinardium/TPE-Redes.git
+```
+
+Ingresar al directorio clonado.
+```sh
+cd TPE-Redes
+```
+
+Construir las imágenes de Docker. Este proceso puede tomar varios minutos ya que se compilan algunos programas.
+```sh
+docker compose build
+```
+
+Una vez que las imágenes estén construidas, levantar los contenedores.
+```sh
+docker compose up -d
+```
+
+Para acceder a las páginas a las que se hace reverse proxy, primero hay que agregar las siguientes líneas al archivo `/etc/hosts` para que las URL se resuelvan al servidor proxy local:
+
+```
+127.0.0.1 juiceshop.local
+127.0.0.1 xss-game.local
+```
+
+Para esto podemos ejecutar lo siguiente:
+
+```sh
+echo -e "127.0.0.1 juiceshop.local\n127.0.0.1 xss-game.local" | sudo tee -a /etc/hosts > /dev/null
+```
+
+Finalmente podremos utilizar `curl` o acceder desde el browser a las URLs `juiceshop.local` y `xss-game.local`.
+
 
 ## Herramientas
 
@@ -36,7 +67,15 @@ La aplicación web que se ejecuta dentro de la red del WAF es un contenedor que 
 
 ---
 
-# Instrucciones
+# Paso a paso
+Los pasos que seguiremos para implementar el sistema son los siguientes:
+
+1. Configurar el servidor proxy
+2. Agregar ModSecurity
+3. Definición de Reglas de solo detección y reglas de bloqueo
+4. Configurar un página default de respuesta ante detección de anomalía
+5. Agregar el CRS de OWASP
+6. Definir el sistema con compose
 
 ## Configurar el servidor proxy
 A continuación se detallan los pasos para configurar el servidor proxy para que funcione como un proxy reverso para recibir las peticiones para al menos 2 servidores con web server.
@@ -408,21 +447,36 @@ SecRuleRemoveById 920170 920420
 Esto nos permite excluir reglas específicas del CRS identificadas por su ID, lo que ayuda a reducir los falsos positivos sin comprometer significativamente la seguridad de la aplicación.
 
 
+## Definir el sistema con compose
+
+Para levantar el WAF y la aplicación web, y asegurar que funcionen en la misma red, utilizamos Docker Compose. El archivo donde se define toda la configuración es `compose.yaml`, el cual contiene lo siguiente:
+
+```YAML
+services:
+    webapp:
+        image: bkimminich/juice-shop
+    proxy:
+        build:
+          context: proxy
+        ports:
+            - "80:80"
+        volumes:
+            - ./proxy/sites/xss-game.conf:/etc/nginx/sites-enabled/xss-game.conf
+            - ./proxy/sites/juiceshop.conf:/etc/nginx/sites-enabled/juiceshop.conf
+            - ./proxy/modsecurity/modsecurity.conf:/etc/nginx/modsecurity.conf
+            - ./proxy/modsecurity/crs-setup.conf:/etc/nginx/crs-setup.conf
+            - ./proxy/modsecurity/custom-rules.conf:/etc/nginx/modsecurity/custom-rules.conf
+            - ./proxy/error-pages/403.html:/usr/share/nginx/html/403.html
+        depends_on:
+        - webapp
+```
+
+Este archivo define dos servicios:
+
+1. `webapp`: A partir de la imagen de juiceshop.
+2. `proxy`: A partir del Dockerfile ubicado en `./proxy/Dockerfile`.
+
+El servicio de proxy escucha en el puerto `80` y lo vincula al mismo puerto en el host. Luego, se bindean los archivos de configuración que se encuentran en este repositorio mediante volúmenes a las ubicaciones donde el contenedor espera encontrar estos archivos. Finalmente, se especifica que el servicio de proxy depende del servicio de la webapp. Esto asegura que el proxy se inicie después de que la aplicación web esté lista.
+
 
 ---
-para armar los contenedores se debe ejecutar el siguiente comando
-```sh
-docker compose build
-```
-
-una vez armadas las imagenes podemos ejecutarlas utilizando
-```sh
-docker compose up -d
-```
-
-para poder ver las paginas a las que le hacemos reverse proxy, primero necesitamos agregar las siguientes lineas a /etc/hosts
-```sh
-echo -e "127.0.0.1 juiceshop.local\n127.0.0.1 xss-game.local" | sudo tee -a /etc/hosts > /dev/null
-```
-
-luego podremos utilizar curl o acceder desde el browser a los urls `juiceshop.local` y `xss-game.local`

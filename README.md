@@ -61,7 +61,7 @@ Los utilizamos para definir y ejecutar el entorno completo del WAF, incluyendo N
 
 Este es un diagrama de la arquitectura de la solución del proyecto, donde el servidor proxy reverso funciona como un WAF para proteger dos aplicaciones web: una dentro de la misma red que el WAF y otra alojada en Internet. Si se configura correctamente, un usuario malicioso no podrá atacar las aplicaciones web, mientras que un usuario normal debería poder utilizar las aplicaciones sin problemas.
 
-![arquitectura](./docs/architecture.png)
+![arquitectura](https://raw.githubusercontent.com/Cuinardium/TPE-Redes/main/docs/architecture.png)
 
 La aplicación web que se ejecuta dentro de la red del WAF es un contenedor que utiliza la imagen de la aplicación [Juice Shop de OWASP](https://github.com/juice-shop/juice-shop). Esta es una aplicación web de prueba que contiene múltiples vulnerabilidades para propósitos educativos y de entrenamiento en seguridad. La otra aplicación que se ejecuta en Internet es [XSS Game](https://xss-game.appspot.com/), una página web creada por Google para probar y aprender sobre ataques de Cross-Site Scripting.
 
@@ -489,14 +489,14 @@ A continuacion mostramos la respuesta del WAF ante algunos ataques
 
 El sitio de `juiceshop` es vulnerable a la inyección de SQL, lo que nos permite acceder a la cuenta del administrador si ingresamos `'or 1=1 --` en el campo de email al iniciar sesión.
 
-![ataque de SQLi](./docs/SQli_attack.png)
+![ataque de SQLi](https://raw.githubusercontent.com/Cuinardium/TPE-Redes/main/docs/SQli_attack.png)
 
 ### Sin el WAF
-![exito de ataque de SQLi](./docs/SQLi_success.png)
+![exito de ataque de SQLi](https://raw.githubusercontent.com/Cuinardium/TPE-Redes/main/docs/SQLi_success.png)
 
 Se puede ver como, mediante SQLi logramos acceder a la cuenta del administrador.
 ### Con el WAF
-![fracaso de ataque de SQLi](./docs/SQLi_failed.png)
+![fracaso de ataque de SQLi](https://raw.githubusercontent.com/Cuinardium/TPE-Redes/main/docs/SQLi_failed.png)
 Se puede observar que el WAF bloqueó la solicitud, mostrando el mensaje de error que especificamos para JSON.
 
 ## Ataque de XSS
@@ -506,16 +506,16 @@ El sitio de `xss-game` es vulnerable a XSS, lo que nos permite ejecutar scripts 
 <script>alert('ataque')</script>
 ```
 
-![ataque de XSS](./docs/XSS_attack.png)
+![ataque de XSS](https://raw.githubusercontent.com/Cuinardium/TPE-Redes/main/docs/XSS_attack.png)
 
 ### Sin el WAF
 
-![exito de ataque de XSS](./docs/XSS_success.png)
+![exito de ataque de XSS](https://raw.githubusercontent.com/Cuinardium/TPE-Redes/main/docs/XSS_success.png)
 
 Observamos como se ejecuto el script mostrando la alerta en el navegador.
 
 ### Con el WAF
-![fracaso de ataque XSS](./docs/XSS_failed.png)
+![fracaso de ataque XSS](https://raw.githubusercontent.com/Cuinardium/TPE-Redes/main/docs/XSS_failed.png)
 
 El WAF detectó el ataque y bloqueó la solicitud, mostrando la página de respuesta configurada previamente.
 
@@ -558,13 +558,13 @@ print('[!!] Password Not In List')
 ```
 
 ### Sin el WAF
-![exito de ataque de fuerza bruta](./docs/brute_force_success.png)
+![exito de ataque de fuerza bruta](https://raw.githubusercontent.com/Cuinardium/TPE-Redes/main/docs/brute_force_success.png)
 
 El ataque tuvo éxito y obtuvimos la contraseña del administrador.
 
 ### Con el WAF
 
-![fracaso de ataque de fuerza bruta](./docs/brute_force_failed.png)
+![fracaso de ataque de fuerza bruta](https://raw.githubusercontent.com/Cuinardium/TPE-Redes/main/docs/brute_force_failed.png)
 
 Después de un par de intentos, el WAF bloqueó el ataque.
 
@@ -588,7 +588,7 @@ http POST juiceshop.local/rest/user/login \
 
 Y aqui vemos el log correspondiente a la detección:
 
-![detecccion de user agent](./docs/user_agent_detection.png)
+![detecccion de user agent](https://raw.githubusercontent.com/Cuinardium/TPE-Redes/main/docs/user_agent_detection.png)
 
 Se puede observar diversa información de la solicitud y que en la sección `H` se indica que se ha matcheado el User Agent en la regex, junto con un mensaje (línea azul).
 

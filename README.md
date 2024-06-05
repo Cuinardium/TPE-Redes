@@ -592,4 +592,7 @@ Y aqui vemos el log correspondiente a la detección:
 
 Se puede observar diversa información de la solicitud y que en la sección `H` se indica que se ha matcheado el User Agent en la regex, junto con un mensaje (línea azul).
 
+## Penetration Testing - Go Test WAF
+Si se desean correr tests de penetración de manera automática, se puede utilizar Go Test WAF. Esta es una aplicación open-source creada por Wallarm para testear diferentes Web Application Firewalls (WAFs) para la detección de vulnerabilidades tanto en la aplicación como en la API. 
 
+Para instalar y utilizar el mismo, seguir las instrucciones especificadas en el README.md del repositorio https://github.com/wallarm/gotestwaf

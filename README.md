@@ -49,10 +49,10 @@ Finalmente podremos utilizar `curl` o acceder desde el browser a las URLs `juice
 ## Herramientas
 
 ### ModSecurity
-Es el motor del WAF que analiza el tráfico HTTP que pasa a través del proxy reverso. nos permite configurar reglas específicas para detectar y bloquear patrones de ataque, asegurando que solo el tráfico seguro llegue a los servidores web. Tambien se pueden configurar reglas de solo deteccion para poder monitorear ciertas requests.
+Es el motor del WAF que analiza el tráfico HTTP que pasa a través del proxy reverso. nos permite configurar reglas específicas para detectar y bloquear patrones de ataque, asegurando que solo el tráfico seguro llegue a los servidores web. También se pueden configurar reglas de solo detección para poder monitorear ciertas requests.
 
 ### Nginx
-En este proyecto esta configurado como proxy reverso, el servidor nginx recibe todas las requests entrantes y las redirige a los servidores web. ModSecurity se configura como un modulo del proxy asi puede acceder al trafico HTTP. 
+En este proyecto esta configurado como proxy reverso, el servidor Nginx recibe todas las requests entrantes y las redirige a los servidores web. ModSecurity se configura como un modulo del proxy asi puede acceder al trafico HTTP. 
 
 ### Docker y Docker compose
 Los utilizamos para definir y ejecutar el entorno completo del WAF, incluyendo Nginx con ModSecurity y una webapp local, dentro de contenedores. Estas herramientas permiten poder levantar el sistema de forma consistente sin preocuparnos por el entorno.
@@ -170,7 +170,7 @@ Estos archivos de configuración determinan cómo Nginx manejará las solicitude
 A continuación se detallan los pasos para agregar ModSecurity al servidor proxy para que este pueda cumplir la funcion de un WAF.
 
 ### Construccion
-ModSecurity funciona como un modulo para nginx por lo tanto se debe agregar al Dockerfile del proxy directivas que instalaran ModSecurity y lo configuraran como modulo de nginx. El Dockerfile en `./proxy/Dockerfile` quedara asi:
+ModSecurity funciona como un modulo para nginx por lo tanto se debe agregar al Dockerfile del proxy directivas que instalaran ModSecurity y lo configuraran como tal. El Dockerfile en `./proxy/Dockerfile` quedara asi:
 
 ```Dockerfile
 #.....otras directivas
@@ -220,7 +220,7 @@ RUN printf '%s\n%s\n' "load_module /etc/nginx/modules-enabled/ngx_http_modsecuri
 
 ```
 
-Una vez instalado ModSecurity, lo que queda es activarlo para cada uno de los sitios en la configuracion de nginx. Por lo que debemos agregar las siguientes directivas:
+Una vez instalado ModSecurity, lo que queda es activarlo para cada uno de los sitios en la configuracion de Nginx. Por lo que debemos agregar las siguientes directivas:
 
 `juiceshop.conf`
 ```Nginx
@@ -248,7 +248,7 @@ Una vez instalado ModSecurity, lo que queda es activarlo para cada uno de los si
 
 Dentro del directorio `./proxy/modsecurity`, se encuentra el archivo de configuración predeterminado de ModSecurity en `modsecurity.conf`. Este archivo contiene la configuración principal de ModSecurity, que incluye reglas de seguridad, configuraciones de auditoría y otras directivas importantes para proteger las aplicaciones web contra ataques comunes.
 
-De forma predeterminada Modsecurity no bloquea el trafico malicioso, solamente lo detecta y lo loguea. Para que modsecurity bloquee el trafico cambiamos la directiva `SecRuleEngine`. El archivo donde se mandan los logs se especifica con la directiva `SecAuditLog`.
+De forma predeterminada Modsecurity no bloquea el trafico malicioso, solamente lo detecta y lo loguea. Para que ModSecurity bloquee el trafico cambiamos la directiva `SecRuleEngine`. El archivo donde se mandan los logs se especifica con la directiva `SecAuditLog`.
 
 ```
 #.....otras directivas
@@ -403,7 +403,7 @@ RUN tar -xvzf v3.3.5.tar.gz
 #.....otras directivas
 ```
 
-Luego, simplemente indicamos a ModSecurity que incluya las reglas del CRS. Por lo tanto agregamos las siguientes directivas al archivo de configuracion de Modsecurity (`./proxy/modsecurity/modsecurity.conf`)
+Luego, simplemente indicamos a ModSecurity que incluya las reglas del CRS. Por lo tanto agregamos las siguientes directivas al archivo de configuracion de ModSecurity (`./proxy/modsecurity/modsecurity.conf`)
 
 ```
 #.....otras directivas
